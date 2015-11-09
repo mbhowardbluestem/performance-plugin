@@ -441,6 +441,61 @@ public final class PerformanceProjectAction implements Action {
         createRespondingTimeChart(dataSetBuilderAverage.build()), 400, 200);
   }
 
+
+    public void doThroughputGraphPerTestCaseMode(final StaplerRequest request, final StaplerResponse response) throws IOException {
+        final String performanceReportNameFile = getPerformanceReportNameFile(request);
+        if (performanceReportNameFile == null) {
+            return;
+        }
+
+        if (ChartUtil.awtProblemCause != null) {
+            // not available. send out error message
+            response.sendRedirect2(request.getContextPath() + "/images/headless.png");
+            return;
+        }
+
+        final DataSetBuilder<String, NumberOnlyBuildLabel> dataSetBuilder = new DataSetBuilder<String, NumberOnlyBuildLabel>();
+        final List<? extends AbstractBuild<?, ?>> builds = getProject().getBuilds();
+        final Range buildsLimits = getFirstAndLastBuild(request, builds);
+
+        int nbBuildsToAnalyze = builds.size();
+        for (final AbstractBuild<?, ?> build : builds) {
+            if (buildsLimits.in(nbBuildsToAnalyze)) {
+
+                if (!buildsLimits.includedByStep(build.number)) {
+                    continue;
+                }
+
+                final PerformanceBuildAction performanceBuildAction = build.getAction(PerformanceBuildAction.class);
+                if (performanceBuildAction == null) {
+                    continue;
+                }
+
+                final PerformanceReport performanceReport = performanceBuildAction
+                        .getPerformanceReportMap().getPerformanceReport(performanceReportNameFile);
+                if (performanceReport == null) {
+                    nbBuildsToAnalyze--;
+                    continue;
+                }
+
+                final ThroughputReport throughputReport = new ThroughputReport(performanceReport);
+                final NumberOnlyBuildLabel label = new NumberOnlyBuildLabel(build);
+
+                List<UriReport> uriListOrdered = performanceReport.getUriListOrdered();
+                for (UriReport uriReport : uriListOrdered) {
+                    dataSetBuilder.add(uriReport.getThroughput(), uriReport.getUri(), label);
+                }
+            }
+            nbBuildsToAnalyze--;
+        }
+
+        ChartUtil.generateGraph(request, response,
+                createThroughputChart(dataSetBuilder.build()), 600, 200);
+    }
+
+
+
+
     public void doThroughputGraph(final StaplerRequest request, final StaplerResponse response) throws IOException {
         final String performanceReportNameFile = getPerformanceReportNameFile(request);
         if (performanceReportNameFile == null) {

@@ -144,6 +144,12 @@ public class UriReport extends AbstractReport implements Serializable, ModelObje
     return totalDuration / size();
   }
 
+  //requests / second
+  public long getThroughput() {
+      return new ThroughputUriReport(this).get();
+  }
+
+
   private long getDurationAt(double percentage) {
     if (percentage < 0 || percentage > 1) {
       throw new IllegalArgumentException("Argument 'percentage' must be a value between 0 and 1 (inclusive)");
